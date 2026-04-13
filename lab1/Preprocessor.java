@@ -20,7 +20,7 @@ public class Preprocessor {
             return;
         }
 
-        Pattern forbidden = Pattern.compile("[^\\x09\\x0A\\x0D\\x20-\\x7E]");
+        Pattern forbidden = Pattern.compile("[^\\x09\\x0A\\x0D\\x20-\\x7E\\u0400-\\u04FF]");
         Matcher forbiddenMatcher = forbidden.matcher(source);
         if (forbiddenMatcher.find()) {
             System.err.println("Error: forbidden characters detected");

@@ -1,7 +1,8 @@
 public class test {
 
+    // Method to compute sum
     static int add(int a, int b) {
-        return a + b;
+        return a + b;   // return sum
     }
 
     public static void main(String[] args) {
@@ -10,6 +11,7 @@ public class test {
         int y = 20;
         int z = 0;
 
+        /* присваиваем z сумму x и y */
         z = x + y;
 
         boolean flag = (x < y) && (z != 0);
@@ -27,9 +29,10 @@ public class test {
 
         int count = 0;
         while (count < 3) {
-            count++;
+            count++;   // увеличиваем счётчик
         }
 
+        /* вызов метода сложения */
         int result = add(x, y);
         System.out.println(result);
 
