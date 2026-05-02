@@ -9,7 +9,7 @@ import java.util.List;
  * запускает лексер и выводит результаты в виде таблицы и последовательности.
  *
  * Примеры запуска:
- *   java Main test.java
+ *   java Main test.txt
  *   java Main                              (без аргументов — встроенный пример)
  */
 public class Main {
@@ -26,8 +26,10 @@ public class Main {
                 return;
             }
         } else {
-            // Если файл не указан, используем встроенный демо-пример
-            source = "public class Main { public static void main(String[] args) { int a = 5; } }";
+
+            source = """
+                   
+                    """;
         }
 
         // Запускаем лексический анализ

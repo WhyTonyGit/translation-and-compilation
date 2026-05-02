@@ -1,3 +1,4 @@
+import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.regex.Matcher;
@@ -91,6 +92,12 @@ public class Preprocessor {
                         closed = true;
                         break;
                     }
+                    // Вложенный /* внутри комментария — ошибка
+                    if (source.charAt(i) == '/' && i + 1 < source.length() && source.charAt(i + 1) == '*') {
+                        System.err.println("Error: nested '/*' inside a block comment is not allowed");
+                        hasError = true;
+                        // продолжаем искать */ чтобы не зацикливаться
+                    }
                     i++;
                 }
                 if (!closed) {
@@ -131,6 +138,11 @@ public class Preprocessor {
         }
 
         System.out.print(result);
+
+        try (PrintWriter pw = new PrintWriter("out.txt")) {
+            pw.print(result);
+        }
+        System.err.println("Result written to out.txt");
     }
 
     /**

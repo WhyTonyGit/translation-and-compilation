@@ -11,7 +11,9 @@ public class test {
         int y = 20;
         int z = 0;
 
-        /* присваиваем z сумму x и y */
+        /**
+         *  присваиваем z сумму x и y
+         *  */
         z = x + y;
 
         boolean flag = (x < y) && (z != 0);

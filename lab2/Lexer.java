@@ -1,11 +1,13 @@
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Deque;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 /**
- * Лексический анализатор (лексер) для языка Java.
+ * Лексический анализатор для языка Java.
  * Преобразует исходный код в последовательность токенов.
  */
 public class Lexer {
@@ -17,6 +19,12 @@ public class Lexer {
         "public", "private", "static", "new", "true", "false", "null",
         "import", "package", "this", "break", "continue", "final",
         "extends", "implements", "interface", "String"
+    ));
+
+    // Таблица идентификаторов test. Содержит все пользовательские имена, встречающиеся в исходном коде.
+    private static final Set<String> IDENTIFIERS = new HashSet<>(Arrays.asList(
+        "test", "add", "a", "b", "main", "args", "x", "y", "z", "flag", "i",
+        "sq", "count", "result", "System", "out", "println"
     ));
 
     // Логические константы — проверяются отдельно перед обычными ключевыми словами
@@ -129,7 +137,82 @@ public class Lexer {
             pos++;
         }
 
+        // Проверка баланса скобок после токенизации
+        checkBracketBalance(tokens);
+
         return tokens;
+    }
+
+    /**
+     * Проверяет, что все открывающие скобки (, [, { имеют соответствующие закрывающие.
+     * Использует стек: при встрече открывающей — кладём в стек, закрывающей — сравниваем с вершиной.
+     */
+    private void checkBracketBalance(List<Token> tokens) {
+        // Стек хранит значения открывающих скобок, которые ещё не закрыты
+        Deque<String> stack = new ArrayDeque<>();
+
+        for (Token t : tokens) {
+            if (!t.type.equals("DELIMITER")) continue;
+
+            switch (t.value) {
+                case "(":
+                case "[":
+                case "{":
+                    stack.push(t.value);
+                    break;
+
+                case ")":
+                    closebracket(stack, "(", ")");
+                    break;
+
+                case "]":
+                    closebracket(stack, "[", "]");
+                    break;
+
+                case "}":
+                    closebracket(stack, "{", "}");
+                    break;
+            }
+        }
+
+        // Если в стеке что-то осталось — есть незакрытые скобки
+        while (!stack.isEmpty()) {
+            String unclosed = stack.pop();
+            String expected = unclosed.equals("(") ? ")" : unclosed.equals("[") ? "]" : "}";
+            System.out.println("Ошибка: незакрытая скобка '" + unclosed + "' — ожидается '" + expected + "'");
+            errorCount++;
+        }
+    }
+
+    /**
+     * Обрабатывает закрывающую скобку с восстановлением после ошибок.
+     * Если вершина стека совпадает — просто закрываем.
+     * Если не совпадает, но нужная открывающая есть глубже — закрываем всё промежуточное
+     * (сообщаем о каждой незакрытой скобке), затем закрываем нужную.
+     * Если нужной вообще нет в стеке — сообщаем о лишней закрывающей.
+     */
+    private void closebracket(Deque<String> stack, String opener, String closer) {
+        if (!stack.isEmpty() && stack.peek().equals(opener)) {
+            // Нормальное закрытие
+            stack.pop();
+            return;
+        }
+
+        // Ищем нужную открывающую глубже в стеке
+        if (stack.contains(opener)) {
+            // Закрываем все промежуточные незакрытые скобки
+            while (!stack.isEmpty() && !stack.peek().equals(opener)) {
+                String unclosed = stack.pop();
+                String expected = unclosed.equals("(") ? ")" : unclosed.equals("[") ? "]" : "}";
+                System.out.println("Ошибка: незакрытая скобка '" + unclosed + "' — ожидается '" + expected + "'");
+                errorCount++;
+            }
+            stack.pop(); // закрываем найденную открывающую
+        } else {
+            // Открывающей нет вообще — лишняя закрывающая
+            System.out.println("Ошибка: лишняя закрывающая скобка '" + closer + "' без открывающей '" + opener + "'");
+            errorCount++;
+        }
     }
 
     /**
@@ -227,7 +310,7 @@ public class Lexer {
 
     /**
      * Читает числовую константу (целую или с плавающей точкой).
-     * Обнаруживает ошибки: двойные точки (1.2.3) и буквы после цифр (1abc).
+     * Обнаруживает ошибки: двойные точки (1.2.3), буквы после цифр (1abc), запятую вместо точки (1,5).
      * @return токен CONSTANT_INT, CONSTANT_REAL или null в случае ошибки
      */
     private Token readNumber() {
@@ -236,7 +319,7 @@ public class Lexer {
         boolean hasError = false;
         int dotCount = 0;
 
-        // Собираем цифры, точки, а также отслеживаем недопустимые буквы
+        // Собираем цифры, точки, а также отслеживаем недопустимые буквы и запятые
         while (pos < input.length()) {
             char c = input.charAt(pos);
 
@@ -253,6 +336,11 @@ public class Lexer {
                 // Обычная цифра
                 sb.append(c);
                 pos++;
+            } else if (c == ',') {
+                // Запятая вместо точки — это ошибка (1,5)
+                sb.append(c);
+                pos++;
+                hasError = true;
             } else if (Character.isLetter(c) || c == '_') {
                 // Буква после цифр — это ошибка (1abc)
                 sb.append(c);
@@ -273,6 +361,13 @@ public class Lexer {
             return null;
         }
 
+        // Вещественное число должно иметь хотя бы одну цифру после точки (20. — ошибка, 20.0 — норма)
+        if (isReal && (lexeme.endsWith(".") || lexeme.endsWith(","))) {
+            System.out.println("Лексическая ошибка: некорректная числовая константа '" + lexeme + "' (нет цифр после точки)");
+            errorCount++;
+            return null;
+        }
+
         // Определяем тип: целое или вещественное
         if (isReal) {
             return new Token("CONSTANT_REAL", lexeme);
@@ -283,8 +378,12 @@ public class Lexer {
 
     /**
      * Читает идентификатор или ключевое слово.
-     * Проверяет в следующем порядке: логические константы, ключевые слова, иначе идентификатор.
-     * @return токен CONSTANT_BOOL, KEYWORD или IDENTIFIER
+     * Проверяет в следующем порядке:
+     *   1. Логические константы (true, false)
+     *   2. Ключевые слова (KEYWORDS)
+     *   3. Известные идентификаторы (IDENTIFIERS)
+     *   4. Всё остальное — лексическая ошибка
+     * @return токен CONSTANT_BOOL, KEYWORD, IDENTIFIER или null в случае ошибки
      */
     private Token readIdentifierOrKeyword() {
         StringBuilder sb = new StringBuilder();
@@ -302,7 +401,6 @@ public class Lexer {
 
         String word = sb.toString();
 
-        // Проверяем в порядке специфичности:
         // 1. Логические константы (true, false)
         if (BOOL_CONSTANTS.contains(word)) {
             return new Token("CONSTANT_BOOL", word);
@@ -313,8 +411,15 @@ public class Lexer {
             return new Token("KEYWORD", word);
         }
 
-        // 3. Остальное — идентификатор
-        return new Token("IDENTIFIER", word);
+        // 3. Известный идентификатор из таблицы IDENTIFIERS
+        if (IDENTIFIERS.contains(word)) {
+            return new Token("IDENTIFIER", word);
+        }
+
+        // 4. Слово не найдено ни в одной таблице — лексическая ошибка
+        System.out.println("Лексическая ошибка: неизвестный идентификатор '" + word + "'");
+        errorCount++;
+        return null;
     }
 
     /**
