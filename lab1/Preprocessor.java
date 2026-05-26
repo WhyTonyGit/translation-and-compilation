@@ -6,6 +6,101 @@ import java.util.regex.Pattern;
 
 public class Preprocessor {
 
+    /**
+     * Программный API: обрабатывает исходный код и возвращает результат.
+     * Возвращает null при наличии ошибок.
+     * Не производит вывод в консоль и не записывает файлы.
+     *
+     * @param source исходный код
+     * @return обработанный код или null при ошибке
+     */
+    public static String preprocess(String source) {
+        // Проверка недопустимых символов
+        java.util.regex.Pattern forbidden =
+                java.util.regex.Pattern.compile("[^\\x09\\x0A\\x0D\\x20-\\x7E\\u0400-\\u04FF]");
+        if (forbidden.matcher(source).find()) {
+            System.out.println("Препроцессор: обнаружены недопустимые символы");
+            return null;
+        }
+
+        // Посимвольный разбор: удаляем комментарии
+        StringBuilder output = new StringBuilder();
+        int i = 0;
+        boolean hasError = false;
+
+        while (i < source.length()) {
+            char c = source.charAt(i);
+
+            if (c == '"') {
+                output.append(c); i++;
+                while (i < source.length() && source.charAt(i) != '"') {
+                    if (source.charAt(i) == '\\' && i + 1 < source.length()) {
+                        output.append(source.charAt(i)); output.append(source.charAt(i + 1)); i += 2;
+                    } else { output.append(source.charAt(i)); i++; }
+                }
+                if (i < source.length()) { output.append(source.charAt(i)); i++; }
+                continue;
+            }
+
+            if (c == '\'') {
+                output.append(c); i++;
+                while (i < source.length() && source.charAt(i) != '\'') {
+                    if (source.charAt(i) == '\\' && i + 1 < source.length()) {
+                        output.append(source.charAt(i)); output.append(source.charAt(i + 1)); i += 2;
+                    } else { output.append(source.charAt(i)); i++; }
+                }
+                if (i < source.length()) { output.append(source.charAt(i)); i++; }
+                continue;
+            }
+
+            if (c == '/' && i + 1 < source.length() && source.charAt(i + 1) == '/') {
+                i += 2;
+                while (i < source.length() && source.charAt(i) != '\n') i++;
+                continue;
+            }
+
+            if (c == '/' && i + 1 < source.length() && source.charAt(i + 1) == '*') {
+                i += 2;
+                boolean closed = false;
+                while (i < source.length()) {
+                    if (source.charAt(i) == '*' && i + 1 < source.length() && source.charAt(i + 1) == '/') {
+                        i += 2; closed = true; break;
+                    }
+                    if (source.charAt(i) == '/' && i + 1 < source.length() && source.charAt(i + 1) == '*') {
+                        System.out.println("Препроцессор: вложенный '/*' внутри блочного комментария");
+                        hasError = true;
+                    }
+                    i++;
+                }
+                if (!closed) {
+                    System.out.println("Препроцессор: незакрытый многострочный комментарий");
+                    hasError = true;
+                }
+                continue;
+            }
+
+            if (c == '*' && i + 1 < source.length() && source.charAt(i + 1) == '/') {
+                System.out.println("Препроцессор: '*/' без открывающего '/*'");
+                hasError = true;
+                i += 2;
+                continue;
+            }
+
+            output.append(c); i++;
+        }
+
+        if (hasError) return null;
+
+        // Нормализация строк
+        String[] lines = output.toString().split("\\n", -1);
+        StringBuilder result = new StringBuilder();
+        for (String line : lines) {
+            String normalized = normalizeSpaces(line);
+            if (!normalized.isEmpty()) result.append(normalized).append("\n");
+        }
+        return result.toString();
+    }
+
     public static void main(String[] args) throws Exception {
         if (args.length < 1) {
             System.err.println("Usage: java Preprocessor <source file>");
