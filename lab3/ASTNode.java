@@ -61,4 +61,73 @@ public class ASTNode {
             children.get(i).printTree(childPrefix, i == children.size() - 1);
         }
     }
+
+    // ==================== СЕРИАЛИЗАЦИЯ / ДЕСЕРИАЛИЗАЦИЯ ====================
+
+    /**
+     * Сериализует всё дерево в строку для сохранения в файл (ast.txt).
+     *
+     * Формат строки: {отступ}тип[\tзначение]
+     *   — отступ: 2 пробела × уровень глубины
+     *   — тип и значение разделены символом табуляции (\t)
+     */
+    public String serialize() {
+        StringBuilder sb = new StringBuilder();
+        serializeNode(sb, this, 0);
+        return sb.toString();
+    }
+
+    private static void serializeNode(StringBuilder sb, ASTNode node, int depth) {
+        for (int i = 0; i < depth * 2; i++) sb.append(' ');
+        sb.append(node.type);
+        if (node.value != null) {
+            sb.append('\t').append(node.value);
+        }
+        sb.append('\n');
+        for (ASTNode child : node.children) {
+            serializeNode(sb, child, depth + 1);
+        }
+    }
+
+    /**
+     * Восстанавливает дерево из строки, записанной методом serialize().
+     *
+     * @param text содержимое ast.txt
+     * @return корневой узел восстановленного дерева
+     */
+    public static ASTNode deserialize(String text) {
+        String[] lines = text.split("\n", -1);
+        ASTNode root = null;
+        // stack[depth] — последний узел на этом уровне глубины
+        ASTNode[] stack = new ASTNode[500];
+
+        for (String line : lines) {
+            if (line.isEmpty()) continue;
+
+            // Считаем отступ (2 пробела = 1 уровень)
+            int indent = 0;
+            while (indent < line.length() && line.charAt(indent) == ' ') indent++;
+            int depth = indent / 2;
+
+            // Разбираем тип и необязательное значение (разделитель — \t)
+            String content = line.trim();
+            int tabIdx = content.indexOf('\t');
+            ASTNode node;
+            if (tabIdx >= 0) {
+                node = new ASTNode(content.substring(0, tabIdx),
+                                   content.substring(tabIdx + 1));
+            } else {
+                node = new ASTNode(content);
+            }
+
+            stack[depth] = node;
+            if (depth == 0) {
+                root = node;
+            } else {
+                stack[depth - 1].addChild(node);
+            }
+        }
+
+        return root != null ? root : new ASTNode("Program");
+    }
 }

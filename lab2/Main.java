@@ -1,4 +1,5 @@
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
@@ -76,6 +77,18 @@ public class Main {
         } else {
             System.out.println("Лексический анализ завершён. Обнаружено " + tokens.size()
                     + " токенов. Ошибок: " + errors + ".");
+        }
+
+        // === СОХРАНЕНИЕ РЕЗУЛЬТАТА В ФАЙЛ (для ЛР3) ===
+        if (errors == 0) {
+            try (PrintWriter pw = new PrintWriter("tokens.txt")) {
+                for (Token t : tokens) {
+                    pw.println(t.type + "\t" + t.value);
+                }
+                System.out.println("Результат сохранён в tokens.txt");
+            } catch (IOException e) {
+                System.out.println("Ошибка записи tokens.txt: " + e.getMessage());
+            }
         }
     }
 
