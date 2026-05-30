@@ -10,13 +10,13 @@ import java.util.List;
  *
  * Поддерживает три режима запуска:
  *
- *   java Main3                — читает tokens.txt (результат ЛР2), строит AST,
+ *   java Main3 — читает tokens.txt (результат ЛР2), строит AST,
  *                               сохраняет AST в ast.txt
  *
- *   java Main3 source.java   — запускает лексер на исходном файле, строит AST,
+ *   java Main3 source.java — запускает лексер на исходном файле, строит AST,
  *                               сохраняет tokens.txt и ast.txt
  *
- *   (fallback)               — если tokens.txt не найден и аргументы не заданы,
+ *   (fallback) — если tokens.txt не найден и аргументы не заданы,
  *                               использует встроенный демо-пример
  */
 public class Main3 {
